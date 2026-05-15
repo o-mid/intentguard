@@ -1,0 +1,37 @@
+.env
+.DS_Store
+.idea/
+.vscode/
+*.iml
+*.swp
+*~
+
+# Go
+bin/
+dist/
+vendor/
+*.exe
+*.test
+coverage.out
+services/api/bin/
+services/api/dist/
+
+# Flutter
+apps/mobile/.dart_tool/
+apps/mobile/.packages
+apps/mobile/build/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+apps/mobile/.fvm/
+.fvm/
+.pub-cache/
+
+# Foundry
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+contracts/lib/
+
+# Local secrets / tooling
+*.pem
+.direnv/
