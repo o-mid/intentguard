@@ -4,3 +4,4 @@
 |-------|--------|--------|-------|
 | 0 | `chore/repo-skeleton` | merged | Monorepo dirs, ignore rules, dry README |
 | 1 | `feat/foundry-mocks` | merged | MockERC20, MockSwapRouter, forge tests |
+| 2 | `feat/api-skeleton` | merged | Go API health, config, slog |
