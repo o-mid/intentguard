@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	Port int
+	Port        int
+	DatabaseURL string
 }
 
 func Load() (Config, error) {
@@ -19,7 +20,16 @@ func Load() (Config, error) {
 		}
 		port = n
 	}
-	return Config{Port: port}, nil
+
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		return Config{}, fmt.Errorf("DATABASE_URL is required")
+	}
+
+	return Config{
+		Port:        port,
+		DatabaseURL: dbURL,
+	}, nil
 }
 
 func (c Config) Addr() string {
