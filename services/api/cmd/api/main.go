@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/o-mid/intentguard/services/api/internal/auth"
 	"github.com/o-mid/intentguard/services/api/internal/config"
 	"github.com/o-mid/intentguard/services/api/internal/db"
 	"github.com/o-mid/intentguard/services/api/internal/httpapi"
@@ -44,11 +45,20 @@ func main() {
 	}
 	defer pool.Close()
 
-	authHandlers := httpapi.AuthHandlers{Users: store.NewUsers(pool)}
+	tokens, err := auth.NewTokenIssuer(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	if err != nil {
+		log.Error("jwt", "err", err)
+		os.Exit(1)
+	}
+
+	authHandlers := httpapi.AuthHandlers{
+		Users:  store.NewUsers(pool),
+		Tokens: tokens,
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           httpapi.NewMux(authHandlers),
+		Handler:           httpapi.NewMux(authHandlers, tokens),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

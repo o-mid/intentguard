@@ -17,8 +17,13 @@ type userStore interface {
 	ByID(ctx context.Context, id string) (store.User, error)
 }
 
+type tokenIssuer interface {
+	Issue(userID string) (auth.Tokens, error)
+}
+
 type AuthHandlers struct {
-	Users userStore
+	Users  userStore
+	Tokens tokenIssuer
 }
 
 type credentialsRequest struct {
@@ -29,6 +34,12 @@ type credentialsRequest struct {
 type userResponse struct {
 	ID    string `json:"id"`
 	Email string `json:"email"`
+}
+
+type tokenResponse struct {
+	AccessToken  string       `json:"access_token"`
+	RefreshToken string       `json:"refresh_token"`
+	User         userResponse `json:"user"`
 }
 
 func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
@@ -59,7 +70,7 @@ func (h AuthHandlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, userResponse{ID: u.ID, Email: u.Email})
+	h.writeTokens(w, http.StatusCreated, u)
 }
 
 func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
@@ -88,5 +99,36 @@ func (h AuthHandlers) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.writeTokens(w, http.StatusOK, u)
+}
+
+func (h AuthHandlers) Me(w http.ResponseWriter, r *http.Request) {
+	userID, ok := UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	u, err := h.Users.ByID(r.Context(), userID)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "lookup_failed")
+		return
+	}
 	writeJSON(w, http.StatusOK, userResponse{ID: u.ID, Email: u.Email})
+}
+
+func (h AuthHandlers) writeTokens(w http.ResponseWriter, status int, u store.User) {
+	toks, err := h.Tokens.Issue(u.ID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "token_failed")
+		return
+	}
+	writeJSON(w, status, tokenResponse{
+		AccessToken:  toks.AccessToken,
+		RefreshToken: toks.RefreshToken,
+		User:         userResponse{ID: u.ID, Email: u.Email},
+	})
 }
