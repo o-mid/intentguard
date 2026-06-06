@@ -30,7 +30,6 @@ apps/mobile/.fvm/
 contracts/cache/
 contracts/out/
 contracts/broadcast/
-contracts/lib/
 
 # Local secrets / tooling
 *.pem
