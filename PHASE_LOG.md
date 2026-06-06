@@ -6,3 +6,4 @@
 | 1 | `feat/foundry-mocks` | merged | MockERC20, MockSwapRouter, forge tests |
 | 2 | `feat/api-skeleton` | merged | Go API health, config, slog |
 | 3 | `feat/auth-jwt` | merged | Email auth, JWT access+refresh, /auth/me |
+| M1 | `release/m1-auth` | done | Auth slice on main |
