@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1",
+  "summary": "Approve MockSwapRouter for 25 MOCK_USDC",
+  "steps": [
+    {
+      "action": "approve",
+      "token": "MOCK_USDC",
+      "spender": "MockSwapRouter",
+      "amount": "25"
+    }
+  ]
+}
