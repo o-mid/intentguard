@@ -127,6 +127,12 @@ func checkStep(step planschema.Step, index int, cfg Config, total *big.Rat) []Vi
 		} else {
 			total.Add(total, amt)
 		}
+	default:
+		// Unknown actions never pass — executor only maps allowlisted verbs.
+		out = append(out, Violation{
+			Code:    CodeUnknownAction,
+			Message: fmt.Sprintf("step=%d action=%s", index, step.Action),
+		})
 	}
 	return out
 }
