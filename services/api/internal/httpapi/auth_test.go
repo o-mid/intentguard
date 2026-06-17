@@ -76,7 +76,7 @@ func newTestMux(t *testing.T) (*http.ServeMux, *memUsers, *auth.TokenIssuer) {
 		t.Fatal(err)
 	}
 	h := AuthHandlers{Users: users, Tokens: tokens}
-	return NewMux(h, tokens), users, tokens
+	return NewMux(h, IntentHandlers{}, tokens), users, tokens
 }
 
 func TestAuthHandlers(t *testing.T) {
