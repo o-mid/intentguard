@@ -59,7 +59,7 @@ func (s Service) Submit(ctx context.Context, userID, text string) (Result, error
 	}
 
 	if err := planschema.ValidateJSON(raw); err != nil {
-		plan, perr := s.persistRejected(ctx, intent.ID, planned, raw, StatusRejectedSchema, []string{err.Error()})
+		plan, perr := s.persistRejected(ctx, intent.ID, planned, raw, StatusRejectedSchema, []string{"schema_invalid"})
 		if perr != nil {
 			return Result{}, perr
 		}
@@ -70,10 +70,7 @@ func (s Service) Submit(ctx context.Context, userID, text string) (Result, error
 
 	violations := policy.Check(planned, s.Policy)
 	if len(violations) > 0 {
-		reasons := make([]string, 0, len(violations))
-		for _, v := range violations {
-			reasons = append(reasons, string(v.Code)+": "+v.Message)
-		}
+		reasons := rejectionCodes(violations)
 		plan, perr := s.persistRejected(ctx, intent.ID, planned, raw, StatusRejectedPolicy, reasons)
 		if perr != nil {
 			return Result{}, perr
@@ -145,6 +142,20 @@ func (s Service) persistRejected(ctx context.Context, intentID string, planned p
 		RawModelJSON:     raw,
 		RejectionReasons: reasonsJSON,
 	}, steps)
+}
+
+func rejectionCodes(vs []policy.Violation) []string {
+	out := make([]string, 0, len(vs))
+	seen := map[string]struct{}{}
+	for _, v := range vs {
+		code := string(v.Code)
+		if _, ok := seen[code]; ok {
+			continue
+		}
+		seen[code] = struct{}{}
+		out = append(out, code)
+	}
+	return out
 }
 
 func decodeSummary(st planschema.Step) string {
