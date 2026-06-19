@@ -35,3 +35,19 @@ curl -s -X POST localhost:8080/auth/login -H 'Content-Type: application/json' \
   -d '{"email":"alice@wallet.test","password":"password123"}'
 curl -s localhost:8080/auth/me -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
+
+## Intents (mock planner)
+
+Authenticated `POST /intents` with `{"text":"..."}`. Example strings the mock planner understands:
+
+- `swap 10 USDC` → approve + swap plan (`awaiting_approval`)
+- `transfer 5 USDC` → allowlisted transfer
+- `bridge funds somewhere` → `rejected_schema`
+- `transfer to unknown wallet` → `rejected_policy`
+- `swap 150 USDC` → `rejected_policy` (amount cap)
+
+```bash
+curl -s -X POST localhost:8080/intents -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H 'Content-Type: application/json' -d '{"text":"swap 10 USDC"}'
+curl -s localhost:8080/plans/$PLAN_ID -H "Authorization: Bearer $ACCESS_TOKEN"
+```
