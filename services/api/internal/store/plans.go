@@ -142,6 +142,28 @@ func (s *Plans) UpdateStepStatus(ctx context.Context, planID string, index int, 
 	return nil
 }
 
+// ClaimStep moves pending/approved/failed → submitting. Succeeded steps are left alone (caller short-circuits).
+func (s *Plans) ClaimStep(ctx context.Context, planID string, index int) (PlanStep, error) {
+	const q = `
+		UPDATE plan_steps
+		SET status = 'submitting'
+		WHERE plan_id = $1 AND step_index = $2
+		  AND status IN ('pending', 'approved', 'failed')
+		RETURNING id::text, plan_id::text, step_index, action, payload_json, decoded_summary, status, tx_hash, error
+	`
+	var st PlanStep
+	err := s.pool.QueryRow(ctx, q, planID, index).
+		Scan(&st.ID, &st.PlanID, &st.Index, &st.Action, &st.PayloadJSON, &st.DecodedSummary, &st.Status, &st.TxHash, &st.Error)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PlanStep{}, ErrConflict
+	}
+	if err != nil {
+		return PlanStep{}, err
+	}
+	_, _ = s.pool.Exec(ctx, `UPDATE plans SET status = 'executing' WHERE id = $1 AND status = 'awaiting_approval'`, planID)
+	return st, nil
+}
+
 func (s *Plans) FinishStep(ctx context.Context, planID string, index int, status string, txHash, errMsg *string) (PlanStep, error) {
 	const q = `
 		UPDATE plan_steps

@@ -26,7 +26,7 @@ var (
 
 type stepStore interface {
 	ByIDForUser(ctx context.Context, planID, userID string) (store.Plan, error)
-	UpdateStepStatus(ctx context.Context, planID string, index int, status string) error
+	ClaimStep(ctx context.Context, planID string, index int) (store.PlanStep, error)
 	FinishStep(ctx context.Context, planID string, index int, status string, txHash, errMsg *string) (store.PlanStep, error)
 }
 
@@ -59,6 +59,14 @@ func (r Runner) ApproveStep(ctx context.Context, userID, planID string, index in
 	}
 
 	step := plan.Steps[index]
+	// Idempotent: already mined — return the same result without re-sending.
+	if step.Status == StepSucceeded {
+		hash := ""
+		if step.TxHash != nil {
+			hash = *step.TxHash
+		}
+		return ExecResult{Step: step, TxHash: hash}, nil
+	}
 
 	var payload planschema.Step
 	if err := json.Unmarshal(step.PayloadJSON, &payload); err != nil {
@@ -69,8 +77,19 @@ func (r Runner) ApproveStep(ctx context.Context, userID, planID string, index in
 		return ExecResult{}, err
 	}
 
-	_ = r.Plans.UpdateStepStatus(ctx, planID, index, StepApproved)
-	_ = r.Plans.UpdateStepStatus(ctx, planID, index, StepSubmitting)
+	if _, err := r.Plans.ClaimStep(ctx, planID, index); err != nil {
+		// Another request won the claim; if it finished, surface that result.
+		plan, _ = r.Plans.ByIDForUser(ctx, planID, userID)
+		if index < len(plan.Steps) && plan.Steps[index].Status == StepSucceeded {
+			st := plan.Steps[index]
+			hash := ""
+			if st.TxHash != nil {
+				hash = *st.TxHash
+			}
+			return ExecResult{Step: st, TxHash: hash}, nil
+		}
+		return ExecResult{}, err
+	}
 
 	txHash, err := r.Chain.Send(ctx, call)
 	if err != nil {
