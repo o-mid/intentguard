@@ -14,6 +14,7 @@ import (
 	"github.com/o-mid/intentguard/services/api/internal/auth"
 	"github.com/o-mid/intentguard/services/api/internal/config"
 	"github.com/o-mid/intentguard/services/api/internal/db"
+	"github.com/o-mid/intentguard/services/api/internal/executor"
 	"github.com/o-mid/intentguard/services/api/internal/httpapi"
 	"github.com/o-mid/intentguard/services/api/internal/intentsvc"
 	"github.com/o-mid/intentguard/services/api/internal/logging"
@@ -54,27 +55,48 @@ func main() {
 		os.Exit(1)
 	}
 
+	deployments, err := executor.LoadDeployments(cfg.DeploymentsPath)
+	if err != nil {
+		log.Error("deployments", "err", err)
+		os.Exit(1)
+	}
+
+	chain, err := executor.Dial(ctx, cfg.ChainRPCURL, cfg.ExecutorPrivateKey)
+	if err != nil {
+		log.Error("chain", "err", err)
+		os.Exit(1)
+	}
+	defer chain.Close()
+
+	plans := store.NewPlans(pool)
+	runner := executor.Runner{
+		Plans:       plans,
+		Chain:       chain,
+		Deployments: deployments,
+	}
+
 	authHandlers := httpapi.AuthHandlers{
 		Users:  store.NewUsers(pool),
 		Tokens: tokens,
 	}
-
 	svc := intentsvc.Service{
 		Intents: store.NewIntents(pool),
-		Plans:   store.NewPlans(pool),
+		Plans:   plans,
 		Planner: planner.NewMock(),
 		Policy:  policy.DefaultConfig(),
 	}
 	intentHandlers := httpapi.IntentHandlers{Service: svc}
+	stepHandlers := httpapi.StepHandlers{Executor: runner}
+	health := httpapi.HealthHandler{RPC: chain}.ServeHTTP
 
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           httpapi.NewMux(authHandlers, intentHandlers, tokens),
+		Handler:           httpapi.NewMux(authHandlers, intentHandlers, stepHandlers, tokens, health),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	go func() {
-		log.Info("api listening", "addr", cfg.Addr())
+		log.Info("api listening", "addr", cfg.Addr(), "from", chain.From().Hex())
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Error("listen", "err", err)
 			os.Exit(1)
