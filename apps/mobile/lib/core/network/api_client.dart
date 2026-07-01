@@ -2,9 +2,15 @@ import 'package:dio/dio.dart';
 
 import '../../features/auth/data/auth_api.dart';
 import '../constants.dart';
+import '../storage/token_storage.dart';
+import 'auth_interceptor.dart';
 
 class ApiClient {
-  ApiClient({String? baseUrl}) {
+  ApiClient({
+    required TokenStorage storage,
+    required void Function() onSessionExpired,
+    String? baseUrl,
+  }) {
     dio = Dio(
       BaseOptions(
         baseUrl: baseUrl ?? kApiBase,
@@ -17,6 +23,12 @@ class ApiClient {
       ),
     );
     authApi = AuthApi(dio);
+    dio.interceptors.add(
+      AuthInterceptor(
+        storage: storage,
+        onSessionExpired: onSessionExpired,
+      ),
+    );
   }
 
   late final Dio dio;
