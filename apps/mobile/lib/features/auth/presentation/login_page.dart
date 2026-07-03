@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import 'cubit/auth_cubit.dart';
 import 'cubit/auth_state.dart';
@@ -74,9 +75,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: Text(loading ? 'Signing in…' : 'Sign in'),
                   ),
                   TextButton(
-                    onPressed: loading
-                        ? null
-                        : () => Navigator.of(context).pushNamed('/register'),
+                    onPressed: loading ? null : () => context.push('/register'),
                     child: const Text('Create account'),
                   ),
                 ],
