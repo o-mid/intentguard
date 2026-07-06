@@ -3,11 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/cubit/auth_state.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
 import '../../features/home/presentation/home_page.dart';
+import '../../features/intents/presentation/composer_page.dart';
+import '../../features/intents/presentation/cubit/composer_cubit.dart';
+import '../di/injection.dart';
 
 GoRouter createAppRouter(AuthCubit authCubit) {
   return GoRouter(
@@ -33,6 +38,13 @@ GoRouter createAppRouter(AuthCubit authCubit) {
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterPage()),
       GoRoute(path: '/home', builder: (_, __) => const HomePage()),
+      GoRoute(
+        path: '/compose',
+        builder: (_, __) => BlocProvider(
+          create: (_) => getIt<ComposerCubit>(),
+          child: const ComposerPage(),
+        ),
+      ),
     ],
   );
 }
