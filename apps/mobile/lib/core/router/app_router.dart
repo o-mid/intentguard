@@ -12,6 +12,8 @@ import '../../features/auth/presentation/register_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/intents/presentation/composer_page.dart';
 import '../../features/intents/presentation/cubit/composer_cubit.dart';
+import '../../features/intents/presentation/cubit/plan_review_cubit.dart';
+import '../../features/intents/presentation/plan_review_page.dart';
 import '../di/injection.dart';
 
 GoRouter createAppRouter(AuthCubit authCubit) {
@@ -44,6 +46,16 @@ GoRouter createAppRouter(AuthCubit authCubit) {
           create: (_) => getIt<ComposerCubit>(),
           child: const ComposerPage(),
         ),
+      ),
+      GoRoute(
+        path: '/plans/:id',
+        builder: (_, state) {
+          final id = state.pathParameters['id']!;
+          return BlocProvider(
+            create: (_) => getIt<PlanReviewCubit>(param1: id)..load(),
+            child: const PlanReviewPage(),
+          );
+        },
       ),
     ],
   );

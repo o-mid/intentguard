@@ -4,6 +4,7 @@ import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/intents/data/intents_api.dart';
 import '../../features/intents/presentation/cubit/composer_cubit.dart';
+import '../../features/intents/presentation/cubit/plan_review_cubit.dart';
 import '../network/api_client.dart';
 import '../storage/token_storage.dart';
 
@@ -28,4 +29,7 @@ Future<void> configureDependencies({TokenStorage? storage}) async {
   getIt.registerSingleton<AuthCubit>(authCubit);
 
   getIt.registerFactory(() => ComposerCubit(getIt<IntentsApi>()));
+  getIt.registerFactoryParam<PlanReviewCubit, String, void>(
+    (planId, _) => PlanReviewCubit(getIt<IntentsApi>(), planId),
+  );
 }
