@@ -27,6 +27,7 @@ type intentStore interface {
 type planStore interface {
 	Create(ctx context.Context, p store.Plan, steps []store.PlanStep) (store.Plan, error)
 	ByIDForUser(ctx context.Context, planID, userID string) (store.Plan, error)
+	CancelForUser(ctx context.Context, planID, userID string) (store.Plan, error)
 }
 
 type Service struct {
@@ -113,6 +114,10 @@ func (s Service) Submit(ctx context.Context, userID, text string) (Result, error
 
 func (s Service) GetPlan(ctx context.Context, userID, planID string) (store.Plan, error) {
 	return s.Plans.ByIDForUser(ctx, planID, userID)
+}
+
+func (s Service) RejectPlan(ctx context.Context, userID, planID string) (store.Plan, error) {
+	return s.Plans.CancelForUser(ctx, planID, userID)
 }
 
 func (s Service) persistRejected(ctx context.Context, intentID string, planned planschema.Plan, raw []byte, status string, reasons []string) (store.Plan, error) {

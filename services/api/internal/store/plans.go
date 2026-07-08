@@ -164,6 +164,32 @@ func (s *Plans) ClaimStep(ctx context.Context, planID string, index int) (PlanSt
 	return st, nil
 }
 
+func (s *Plans) CancelForUser(ctx context.Context, planID, userID string) (Plan, error) {
+	const q = `
+		UPDATE plans p
+		SET status = 'cancelled'
+		FROM intents i
+		WHERE p.id = $1
+		  AND i.id = p.intent_id
+		  AND i.user_id = $2
+		  AND p.status IN ('awaiting_approval', 'executing')
+		RETURNING p.id::text
+	`
+	var id string
+	err := s.pool.QueryRow(ctx, q, planID, userID).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Plan{}, ErrNotFound
+	}
+	if err != nil {
+		return Plan{}, err
+	}
+	_, _ = s.pool.Exec(ctx, `
+		UPDATE intents SET status = 'cancelled'
+		WHERE id = (SELECT intent_id FROM plans WHERE id = $1)
+	`, planID)
+	return s.ByIDForUser(ctx, planID, userID)
+}
+
 func (s *Plans) FinishStep(ctx context.Context, planID string, index int, status string, txHash, errMsg *string) (PlanStep, error) {
 	const q = `
 		UPDATE plan_steps

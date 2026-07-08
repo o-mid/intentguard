@@ -78,6 +78,21 @@ func (m *memPlans) ByIDForUser(_ context.Context, planID, _ string) (store.Plan,
 	return p, nil
 }
 
+func (m *memPlans) CancelForUser(_ context.Context, planID, _ string) (store.Plan, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	p, ok := m.byID[planID]
+	if !ok {
+		return store.Plan{}, store.ErrNotFound
+	}
+	if p.Status != StatusAwaitingApproval && p.Status != "executing" {
+		return store.Plan{}, store.ErrNotFound
+	}
+	p.Status = "cancelled"
+	m.byID[planID] = p
+	return p, nil
+}
+
 func newService() Service {
 	return Service{
 		Intents: newMemIntents(),
