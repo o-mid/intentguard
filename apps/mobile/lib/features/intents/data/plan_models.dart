@@ -64,6 +64,7 @@ class PlanModel {
       rejectionReasons: reasons,
     );
   }
+
 }
 
 class IntentResult {

@@ -29,30 +29,78 @@ class PlanReviewPage extends StatelessWidget {
               );
             }
             final plan = state.plan!;
-            return ListView(
-              padding: const EdgeInsets.all(16),
+            final busy = state.busyStepIndex != null;
+            return Column(
               children: [
-                Text(plan.summary, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    Chip(label: Text(plan.status)),
-                    if (plan.rejectionReasons.isNotEmpty)
-                      Chip(
-                        label: Text(plan.rejectionReasons.join(', ')),
-                        backgroundColor:
-                            Theme.of(context).colorScheme.errorContainer,
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Text(
+                        plan.summary,
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
-                  ],
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          Chip(label: Text(plan.status)),
+                          if (plan.rejectionReasons.isNotEmpty)
+                            Chip(
+                              label: Text(plan.rejectionReasons.join(', ')),
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.errorContainer,
+                            ),
+                        ],
+                      ),
+                      if (state.message != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          state.message!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      Text(
+                        'Steps',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      if (plan.steps.isEmpty)
+                        const Text('No steps in this plan.')
+                      else
+                        ...plan.steps.map(
+                          (step) => _StepCard(
+                            step: step,
+                            busy: state.busyStepIndex == step.index,
+                            canApprove: !busy &&
+                                plan.status != 'cancelled' &&
+                                plan.status != 'rejected_schema' &&
+                                plan.status != 'rejected_policy' &&
+                                step.status == 'pending' &&
+                                _priorSucceeded(plan, step.index),
+                            onApprove: () => context
+                                .read<PlanReviewCubit>()
+                                .approveStep(step.index),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Text('Steps', style: Theme.of(context).textTheme.titleSmall),
-                const SizedBox(height: 8),
-                if (plan.steps.isEmpty)
-                  const Text('No steps in this plan.')
-                else
-                  ...plan.steps.map((step) => _StepCard(step: step)),
+                if (state.canReject)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: OutlinedButton(
+                      onPressed: busy
+                          ? null
+                          : () => context.read<PlanReviewCubit>().reject(),
+                      child: Text(
+                        state.busyStepIndex == -1 ? 'Rejecting…' : 'Reject plan',
+                      ),
+                    ),
+                  ),
               ],
             );
           },
@@ -62,10 +110,30 @@ class PlanReviewPage extends StatelessWidget {
   }
 }
 
+bool _priorSucceeded(PlanModel plan, int index) {
+  for (final step in plan.steps) {
+    if (step.index >= index) {
+      break;
+    }
+    if (step.status != 'succeeded') {
+      return false;
+    }
+  }
+  return true;
+}
+
 class _StepCard extends StatelessWidget {
-  const _StepCard({required this.step});
+  const _StepCard({
+    required this.step,
+    required this.busy,
+    required this.canApprove,
+    required this.onApprove,
+  });
 
   final PlanStepModel step;
+  final bool busy;
+  final bool canApprove;
+  final VoidCallback onApprove;
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +158,9 @@ class _StepCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 6),
-              Text(step.decodedSummary.isEmpty ? step.action : step.decodedSummary),
+              Text(
+                step.decodedSummary.isEmpty ? step.action : step.decodedSummary,
+              ),
               if (step.txHash != null && step.txHash!.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
@@ -105,6 +175,16 @@ class _StepCard extends StatelessWidget {
                 Text(
                   step.error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+              if (canApprove || busy) ...[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton(
+                    onPressed: busy ? null : onApprove,
+                    child: Text(busy ? 'Submitting…' : 'Approve'),
+                  ),
                 ),
               ],
             ],
