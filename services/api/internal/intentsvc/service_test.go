@@ -44,6 +44,19 @@ func (m *memIntents) UpdateStatus(_ context.Context, id, status string) error {
 	return nil
 }
 
+func (m *memIntents) ListByUser(_ context.Context, userID string) ([]store.IntentPlanRef, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []store.IntentPlanRef
+	for _, in := range m.byID {
+		if in.UserID != userID {
+			continue
+		}
+		out = append(out, store.IntentPlanRef{Intent: in, PlanID: ""})
+	}
+	return out, nil
+}
+
 type memPlans struct {
 	mu   sync.Mutex
 	byID map[string]store.Plan

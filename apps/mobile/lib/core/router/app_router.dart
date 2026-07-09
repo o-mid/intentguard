@@ -9,6 +9,8 @@ import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/cubit/auth_state.dart';
 import '../../features/auth/presentation/login_page.dart';
 import '../../features/auth/presentation/register_page.dart';
+import '../../features/balances/presentation/balances_page.dart';
+import '../../features/history/presentation/history_page.dart';
 import '../../features/home/presentation/home_page.dart';
 import '../../features/intents/presentation/composer_page.dart';
 import '../../features/intents/presentation/cubit/composer_cubit.dart';
@@ -57,6 +59,8 @@ GoRouter createAppRouter(AuthCubit authCubit) {
           );
         },
       ),
+      GoRoute(path: '/history', builder: (_, __) => const HistoryPage()),
+      GoRoute(path: '/balances', builder: (_, __) => const BalancesPage()),
     ],
   );
 }
