@@ -31,6 +31,18 @@ class HomePage extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/compose'),
           ),
+          ListTile(
+            title: const Text('History'),
+            subtitle: const Text('Past intents and plans'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/history'),
+          ),
+          ListTile(
+            title: const Text('Balances'),
+            subtitle: const Text('Demo token balances'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/balances'),
+          ),
         ],
       ),
     );

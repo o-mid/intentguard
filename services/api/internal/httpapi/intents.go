@@ -15,6 +15,7 @@ type intentService interface {
 	Submit(ctx context.Context, userID, text string) (intentsvc.Result, error)
 	GetPlan(ctx context.Context, userID, planID string) (store.Plan, error)
 	RejectPlan(ctx context.Context, userID, planID string) (store.Plan, error)
+	ListIntents(ctx context.Context, userID string) ([]intentsvc.Result, error)
 }
 
 type IntentHandlers struct {
@@ -75,6 +76,24 @@ func (h IntentHandlers) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, toIntentResponse(res))
+}
+
+func (h IntentHandlers) List(w http.ResponseWriter, r *http.Request) {
+	userID, ok := UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	items, err := h.Service.ListIntents(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "list_failed")
+		return
+	}
+	out := make([]intentResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, toIntentResponse(item))
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (h IntentHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
