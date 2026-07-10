@@ -45,7 +45,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('Could not load history'),
+                    const Text('History could not be loaded.'),
                     const SizedBox(height: 12),
                     TextButton(onPressed: _reload, child: const Text('Retry')),
                   ],
@@ -55,7 +55,9 @@ class _HistoryPageState extends State<HistoryPage> {
           }
           final items = snap.data ?? [];
           if (items.isEmpty) {
-            return const Center(child: Text('No intents yet'));
+            return const Center(
+              child: Text('No intents yet. Compose one from Home.'),
+            );
           }
           return RefreshIndicator(
             onRefresh: _reload,

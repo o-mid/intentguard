@@ -28,7 +28,7 @@ class ComposerCubit extends Cubit<ComposerState> {
     if (text.isEmpty) {
       emit(state.copyWith(
         status: ComposerStatus.error,
-        message: 'Enter an intent',
+        message: 'Describe what you want to do first.',
       ));
       return;
     }
@@ -43,7 +43,7 @@ class ComposerCubit extends Cubit<ComposerState> {
     } catch (_) {
       emit(state.copyWith(
         status: ComposerStatus.error,
-        message: 'Plan rejected or unavailable',
+        message: 'Could not create a plan. Try a different intent.',
       ));
     }
   }

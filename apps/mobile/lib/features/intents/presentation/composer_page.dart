@@ -57,7 +57,7 @@ class _ComposerPageState extends State<ComposerPage> {
                     onChanged: context.read<ComposerCubit>().setText,
                     decoration: const InputDecoration(
                       labelText: 'Intent',
-                      hintText: 'swap 10 USDC',
+                      hintText: 'e.g. swap 10 USDC',
                     ),
                   ),
                   const SizedBox(height: 12),
