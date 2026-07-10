@@ -1,4 +1,6 @@
-class PlanStepModel {
+import 'package:equatable/equatable.dart';
+
+class PlanStepModel extends Equatable {
   const PlanStepModel({
     required this.index,
     required this.action,
@@ -25,9 +27,13 @@ class PlanStepModel {
       error: json['error'] as String?,
     );
   }
+
+  @override
+  List<Object?> get props =>
+      [index, action, decodedSummary, status, txHash, error];
 }
 
-class PlanModel {
+class PlanModel extends Equatable {
   const PlanModel({
     required this.id,
     required this.intentId,
@@ -65,9 +71,12 @@ class PlanModel {
     );
   }
 
+  @override
+  List<Object?> get props =>
+      [id, intentId, status, summary, steps, rejectionReasons];
 }
 
-class IntentResult {
+class IntentResult extends Equatable {
   const IntentResult({
     required this.id,
     required this.text,
@@ -88,4 +97,7 @@ class IntentResult {
       plan: PlanModel.fromJson(json['plan'] as Map<String, dynamic>),
     );
   }
+
+  @override
+  List<Object?> get props => [id, text, status, plan];
 }
