@@ -17,7 +17,7 @@ class PlanReviewCubit extends Cubit<PlanReviewState> {
     } catch (_) {
       emit(state.copyWith(
         status: PlanReviewStatus.error,
-        message: 'Could not load plan',
+        message: 'This plan could not be loaded.',
       ));
     }
   }
@@ -35,7 +35,7 @@ class PlanReviewCubit extends Cubit<PlanReviewState> {
     } catch (_) {
       emit(state.copyWith(
         clearBusy: true,
-        message: 'Step approval failed',
+        message: 'That step failed to approve. Try again.',
       ));
     }
   }
@@ -52,7 +52,7 @@ class PlanReviewCubit extends Cubit<PlanReviewState> {
     } catch (_) {
       emit(state.copyWith(
         clearBusy: true,
-        message: 'Could not reject plan',
+        message: 'Could not reject this plan. Try again.',
       ));
     }
   }

@@ -17,12 +17,12 @@ class BalancesPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Demo balances (Anvil)',
+            'Demo balances',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           Text(
-            'Shown for local demos. Live chain reads land later.',
+            'Sample Anvil balances for local demos. Live chain reads come later.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 16),

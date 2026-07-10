@@ -24,7 +24,9 @@ class PlanReviewPage extends StatelessWidget {
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text(state.message ?? 'Plan unavailable'),
+                  child: Text(
+                    state.message ?? 'This plan is unavailable.',
+                  ),
                 ),
               );
             }
@@ -37,7 +39,9 @@ class PlanReviewPage extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     children: [
                       Text(
-                        plan.summary,
+                        plan.summary.isEmpty
+                            ? 'Untitled plan'
+                            : plan.summary,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
@@ -69,7 +73,9 @@ class PlanReviewPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       if (plan.steps.isEmpty)
-                        const Text('No steps in this plan.')
+                        const Text(
+                          'No executable steps. Rejected plans stay here for review.',
+                        )
                       else
                         ...plan.steps.map(
                           (step) => _StepCard(

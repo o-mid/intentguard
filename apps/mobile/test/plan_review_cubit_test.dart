@@ -97,7 +97,7 @@ void main() {
       const PlanReviewState(status: PlanReviewStatus.loading),
       const PlanReviewState(
         status: PlanReviewStatus.error,
-        message: 'Could not load plan',
+        message: 'This plan could not be loaded.',
       ),
     ],
   );
@@ -173,7 +173,7 @@ void main() {
       const PlanReviewState(
         status: PlanReviewStatus.ready,
         plan: _pendingPlan,
-        message: 'Step approval failed',
+        message: 'That step failed to approve. Try again.',
       ),
     ],
   );
