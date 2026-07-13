@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/o-mid/intentguard/services/api/internal/intentsvc"
+	"github.com/o-mid/intentguard/services/api/internal/planner"
 	"github.com/o-mid/intentguard/services/api/internal/store"
 )
 
@@ -72,6 +73,10 @@ func (h IntentHandlers) Create(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.Service.Submit(r.Context(), userID, text)
 	if err != nil {
+		if errors.Is(err, planner.ErrUnavailable) {
+			writeError(w, http.StatusServiceUnavailable, "planner_unavailable")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "planner_failed")
 		return
 	}

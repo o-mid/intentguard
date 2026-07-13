@@ -4,16 +4,19 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	planschema "github.com/o-mid/intentguard/packages/plan-schema"
 )
 
 const defaultLLMBaseURL = "https://api.openai.com/v1"
 const defaultLLMModel = "gpt-4o-mini"
+const defaultLLMTimeout = 15 * time.Second
 
 const systemPrompt = `You are IntentGuard's plan generator.
 Given a user DeFi intent, return ONLY a JSON object matching this shape:
@@ -40,6 +43,7 @@ type LLMOptions struct {
 	BaseURL    string
 	APIKey     string
 	Model      string
+	Timeout    time.Duration
 	HTTPClient *http.Client
 }
 
@@ -57,7 +61,11 @@ func NewLLM(opts LLMOptions) (*LLMPlanner, error) {
 	}
 	client := opts.HTTPClient
 	if client == nil {
-		client = http.DefaultClient
+		timeout := opts.Timeout
+		if timeout <= 0 {
+			timeout = defaultLLMTimeout
+		}
+		client = &http.Client{Timeout: timeout}
 	}
 	return &LLMPlanner{
 		baseURL: base,
@@ -68,6 +76,21 @@ func NewLLM(opts LLMOptions) (*LLMPlanner, error) {
 }
 
 func (p *LLMPlanner) Plan(ctx context.Context, intentText string) (planschema.Plan, error) {
+	var last error
+	for attempt := 0; attempt < 2; attempt++ {
+		plan, err := p.planOnce(ctx, intentText)
+		if err == nil {
+			return plan, nil
+		}
+		last = err
+		if !isRetryable(err) || attempt == 1 {
+			break
+		}
+	}
+	return planschema.Plan{}, fmt.Errorf("%w: %v", ErrUnavailable, last)
+}
+
+func (p *LLMPlanner) planOnce(ctx context.Context, intentText string) (planschema.Plan, error) {
 	raw, err := p.complete(ctx, intentText)
 	if err != nil {
 		return planschema.Plan{}, err
@@ -76,6 +99,7 @@ func (p *LLMPlanner) Plan(ctx context.Context, intentText string) (planschema.Pl
 	if err != nil {
 		return planschema.Plan{}, fmt.Errorf("llm plan json: %w", err)
 	}
+	// Schema + policy run in intentsvc after Plan returns — never execute raw model hex.
 	return plan, nil
 }
 
@@ -128,7 +152,7 @@ func (p *LLMPlanner) complete(ctx context.Context, intentText string) (string, e
 		return "", fmt.Errorf("llm read: %w", err)
 	}
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return "", fmt.Errorf("llm status %d: %s", res.StatusCode, truncate(string(payload), 200))
+		return "", &httpStatusError{code: res.StatusCode, body: truncate(string(payload), 200)}
 	}
 
 	var parsed chatResponse
@@ -142,6 +166,34 @@ func (p *LLMPlanner) complete(ctx context.Context, intentText string) (string, e
 		return "", fmt.Errorf("llm empty choices")
 	}
 	return extractJSON(parsed.Choices[0].Message.Content), nil
+}
+
+type httpStatusError struct {
+	code int
+	body string
+}
+
+func (e *httpStatusError) Error() string {
+	return fmt.Sprintf("llm status %d: %s", e.code, e.body)
+}
+
+func isRetryable(err error) bool {
+	if err == nil {
+		return false
+	}
+	var status *httpStatusError
+	if errors.As(err, &status) {
+		return status.code == 429 || status.code >= 500
+	}
+	// Timeouts / transport errors are retryable; bad JSON from the model is not.
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return true
+	}
+	msg := err.Error()
+	if strings.Contains(msg, "llm request:") || strings.Contains(msg, "llm read:") {
+		return true
+	}
+	return false
 }
 
 func extractJSON(content string) string {
