@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+      - run: forge test -vv
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/api/go.mod
+          cache-dependency-path: |
+            services/api/go.sum
+            packages/plan-schema/go.sum
+      - name: plan-schema tests
+        working-directory: packages/plan-schema
+        run: go test ./...
+      - name: api tests
+        working-directory: services/api
+        run: go test ./...
+      - name: evals
+        working-directory: services/api
+        run: go run ./cmd/evals -dir ../../evals/cases
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.6"
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test
