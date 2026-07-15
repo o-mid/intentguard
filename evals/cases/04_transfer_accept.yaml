@@ -1,0 +1,3 @@
+id: transfer_accept
+intent: transfer 5 USDC
+expect: accept

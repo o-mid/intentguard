@@ -1,0 +1,3 @@
+id: bridge_reject_schema
+intent: bridge funds somewhere
+expect: reject_schema

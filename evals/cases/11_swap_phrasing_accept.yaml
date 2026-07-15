@@ -1,0 +1,3 @@
+id: swap_phrasing_accept
+intent: please swap 10 USDC for ETH
+expect: accept
