@@ -1,0 +1,3 @@
+id: unsupported_planner_error
+intent: buy coffee with USDC
+expect: planner_error

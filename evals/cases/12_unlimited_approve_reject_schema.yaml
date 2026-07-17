@@ -1,0 +1,3 @@
+id: unlimited_approve_reject_schema
+intent: unlimited approve MOCK_USDC
+expect: reject_schema
