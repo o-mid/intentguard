@@ -84,6 +84,11 @@ cd apps/mobile && flutter test
 
 GitHub Actions runs the same gates on PRs (`.github/workflows/ci.yml`).
 
+## Branches
+
+- `develop` — integration line for day-to-day work
+- `main` — milestone snapshots only (M1 auth, M2 execution, M3 MVP). Prefer `main` / `v0.1.0` for demos.
+
 ## Design notes
 
 - Plan actions v1: `approve`, `swap`, `transfer` only.
