@@ -2,4 +2,4 @@ IntentGuard turns a natural-language DeFi intent into a schema-validated multi-s
 
 Layout: `apps/mobile` (Flutter), `services/api` (Go), `contracts` (Foundry), `packages/plan-schema`, `evals`, `deploy`, `docs`.
 
-Build process and phase calendar: see [`docs/BUILDER_HANDOFF.md`](docs/BUILDER_HANDOFF.md).
+See `services/api/README.md` and `contracts/README.md` to run locally.
