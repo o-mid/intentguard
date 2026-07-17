@@ -15,7 +15,10 @@ import (
 	"github.com/o-mid/intentguard/services/api/internal/config"
 	"github.com/o-mid/intentguard/services/api/internal/db"
 	"github.com/o-mid/intentguard/services/api/internal/httpapi"
+	"github.com/o-mid/intentguard/services/api/internal/intentsvc"
 	"github.com/o-mid/intentguard/services/api/internal/logging"
+	"github.com/o-mid/intentguard/services/api/internal/planner"
+	"github.com/o-mid/intentguard/services/api/internal/policy"
 	"github.com/o-mid/intentguard/services/api/internal/store"
 )
 
@@ -56,9 +59,17 @@ func main() {
 		Tokens: tokens,
 	}
 
+	svc := intentsvc.Service{
+		Intents: store.NewIntents(pool),
+		Plans:   store.NewPlans(pool),
+		Planner: planner.NewMock(),
+		Policy:  policy.DefaultConfig(),
+	}
+	intentHandlers := httpapi.IntentHandlers{Service: svc}
+
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           httpapi.NewMux(authHandlers, tokens),
+		Handler:           httpapi.NewMux(authHandlers, intentHandlers, tokens),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
