@@ -9,6 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/o-mid/intentguard/packages/plan-schema v0.0.0-00010101000000-000000000000
 	golang.org/x/crypto v0.54.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

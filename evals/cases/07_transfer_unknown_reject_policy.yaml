@@ -1,0 +1,4 @@
+id: transfer_unknown_reject_policy
+intent: transfer to unknown wallet
+expect: reject_policy
+codes: [bad_recipient]
