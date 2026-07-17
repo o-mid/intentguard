@@ -8,11 +8,14 @@ import (
 )
 
 type Config struct {
-	Port           int
-	DatabaseURL    string
-	JWTSecret      string
-	AccessTokenTTL time.Duration
-	RefreshTokenTTL time.Duration
+	Port              int
+	DatabaseURL       string
+	JWTSecret         string
+	AccessTokenTTL    time.Duration
+	RefreshTokenTTL   time.Duration
+	ChainRPCURL       string
+	ExecutorPrivateKey string
+	DeploymentsPath   string
 }
 
 func Load() (Config, error) {
@@ -53,12 +56,29 @@ func Load() (Config, error) {
 		refreshTTL = d
 	}
 
+	rpc := os.Getenv("CHAIN_RPC_URL")
+	if rpc == "" {
+		rpc = "http://127.0.0.1:8545"
+	}
+	pk := os.Getenv("EXECUTOR_PRIVATE_KEY")
+	if pk == "" {
+		// Anvil account #0 — local demo only.
+		pk = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+	}
+	deployments := os.Getenv("DEPLOYMENTS_PATH")
+	if deployments == "" {
+		deployments = "../../contracts/deployments/anvil.json"
+	}
+
 	return Config{
-		Port:            port,
-		DatabaseURL:     dbURL,
-		JWTSecret:       secret,
-		AccessTokenTTL:  accessTTL,
-		RefreshTokenTTL: refreshTTL,
+		Port:               port,
+		DatabaseURL:        dbURL,
+		JWTSecret:          secret,
+		AccessTokenTTL:     accessTTL,
+		RefreshTokenTTL:    refreshTTL,
+		ChainRPCURL:        rpc,
+		ExecutorPrivateKey: pk,
+		DeploymentsPath:    deployments,
 	}, nil
 }
 
