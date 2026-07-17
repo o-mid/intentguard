@@ -4,18 +4,23 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
 type Config struct {
-	Port              int
-	DatabaseURL       string
-	JWTSecret         string
-	AccessTokenTTL    time.Duration
-	RefreshTokenTTL   time.Duration
-	ChainRPCURL       string
+	Port               int
+	DatabaseURL        string
+	JWTSecret          string
+	AccessTokenTTL     time.Duration
+	RefreshTokenTTL    time.Duration
+	ChainRPCURL        string
 	ExecutorPrivateKey string
-	DeploymentsPath   string
+	DeploymentsPath    string
+	PlannerMode        string
+	LLMAPIKey          string
+	LLMBaseURL         string
+	LLMModel           string
 }
 
 func Load() (Config, error) {
@@ -70,6 +75,17 @@ func Load() (Config, error) {
 		deployments = "../../contracts/deployments/anvil.json"
 	}
 
+	plannerMode := strings.ToLower(strings.TrimSpace(os.Getenv("PLANNER_MODE")))
+	if plannerMode == "" {
+		plannerMode = "mock"
+	}
+	if plannerMode != "mock" && plannerMode != "llm" {
+		return Config{}, fmt.Errorf("PLANNER_MODE: want mock|llm, got %q", plannerMode)
+	}
+	if plannerMode == "llm" && strings.TrimSpace(os.Getenv("LLM_API_KEY")) == "" {
+		return Config{}, fmt.Errorf("LLM_API_KEY is required when PLANNER_MODE=llm")
+	}
+
 	return Config{
 		Port:               port,
 		DatabaseURL:        dbURL,
@@ -79,6 +95,10 @@ func Load() (Config, error) {
 		ChainRPCURL:        rpc,
 		ExecutorPrivateKey: pk,
 		DeploymentsPath:    deployments,
+		PlannerMode:        plannerMode,
+		LLMAPIKey:          os.Getenv("LLM_API_KEY"),
+		LLMBaseURL:         os.Getenv("LLM_BASE_URL"),
+		LLMModel:           os.Getenv("LLM_MODEL"),
 	}, nil
 }
 
