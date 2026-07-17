@@ -6,12 +6,17 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/o-mid/intentguard/services/api/internal/auth"
 	"github.com/o-mid/intentguard/services/api/internal/config"
+	"github.com/o-mid/intentguard/services/api/internal/db"
 	"github.com/o-mid/intentguard/services/api/internal/httpapi"
 	"github.com/o-mid/intentguard/services/api/internal/logging"
+	"github.com/o-mid/intentguard/services/api/internal/store"
 )
 
 func main() {
@@ -23,9 +28,37 @@ func main() {
 		os.Exit(1)
 	}
 
+	migrationsPath := os.Getenv("MIGRATIONS_PATH")
+	if migrationsPath == "" {
+		migrationsPath = filepath.Join("migrations")
+	}
+	if err := db.Migrate(cfg.DatabaseURL, migrationsPath); err != nil {
+		log.Error("migrate", "err", err)
+		os.Exit(1)
+	}
+
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Error("db", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	tokens, err := auth.NewTokenIssuer(cfg.JWTSecret, cfg.AccessTokenTTL, cfg.RefreshTokenTTL)
+	if err != nil {
+		log.Error("jwt", "err", err)
+		os.Exit(1)
+	}
+
+	authHandlers := httpapi.AuthHandlers{
+		Users:  store.NewUsers(pool),
+		Tokens: tokens,
+	}
+
 	srv := &http.Server{
 		Addr:              cfg.Addr(),
-		Handler:           httpapi.NewMux(),
+		Handler:           httpapi.NewMux(authHandlers, tokens),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
@@ -41,9 +74,9 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error("shutdown", "err", err)
 		os.Exit(1)
 	}
