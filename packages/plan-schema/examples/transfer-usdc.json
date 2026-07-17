@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "1",
+  "summary": "Transfer 5 MOCK_USDC to allowlisted recipient",
+  "steps": [
+    {
+      "action": "transfer",
+      "token": "MOCK_USDC",
+      "to": "0x1111111111111111111111111111111111111111",
+      "amount": "5"
+    }
+  ]
+}
