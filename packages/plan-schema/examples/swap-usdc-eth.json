@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1",
+  "summary": "Swap 10 MOCK_USDC to MOCK_ETH",
+  "steps": [
+    {
+      "action": "approve",
+      "token": "MOCK_USDC",
+      "spender": "MockSwapRouter",
+      "amount": "10"
+    },
+    {
+      "action": "swap",
+      "tokenIn": "MOCK_USDC",
+      "tokenOut": "MOCK_ETH",
+      "amountIn": "10",
+      "minAmountOut": "0.009",
+      "maxSlippageBps": 100
+    }
+  ]
+}
