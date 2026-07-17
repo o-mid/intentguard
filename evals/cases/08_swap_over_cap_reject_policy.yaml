@@ -1,0 +1,4 @@
+id: swap_over_cap_reject_policy
+intent: swap 150 USDC
+expect: reject_policy
+codes: [amount_over_cap]

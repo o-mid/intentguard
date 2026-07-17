@@ -1,0 +1,3 @@
+id: swap_50_accept
+intent: swap 50 USDC
+expect: accept

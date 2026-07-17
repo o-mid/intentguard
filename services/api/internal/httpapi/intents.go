@@ -8,12 +8,15 @@ import (
 	"strings"
 
 	"github.com/o-mid/intentguard/services/api/internal/intentsvc"
+	"github.com/o-mid/intentguard/services/api/internal/planner"
 	"github.com/o-mid/intentguard/services/api/internal/store"
 )
 
 type intentService interface {
 	Submit(ctx context.Context, userID, text string) (intentsvc.Result, error)
 	GetPlan(ctx context.Context, userID, planID string) (store.Plan, error)
+	RejectPlan(ctx context.Context, userID, planID string) (store.Plan, error)
+	ListIntents(ctx context.Context, userID string) ([]intentsvc.Result, error)
 }
 
 type IntentHandlers struct {
@@ -30,6 +33,8 @@ type stepResponse struct {
 	DecodedSummary string          `json:"decoded_summary"`
 	Status         string          `json:"status"`
 	Payload        json.RawMessage `json:"payload"`
+	TxHash         *string         `json:"tx_hash,omitempty"`
+	Error          *string         `json:"error,omitempty"`
 }
 
 type planResponse struct {
@@ -68,10 +73,32 @@ func (h IntentHandlers) Create(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.Service.Submit(r.Context(), userID, text)
 	if err != nil {
+		if errors.Is(err, planner.ErrUnavailable) {
+			writeError(w, http.StatusServiceUnavailable, "planner_unavailable")
+			return
+		}
 		writeError(w, http.StatusBadRequest, "planner_failed")
 		return
 	}
 	writeJSON(w, http.StatusCreated, toIntentResponse(res))
+}
+
+func (h IntentHandlers) List(w http.ResponseWriter, r *http.Request) {
+	userID, ok := UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	items, err := h.Service.ListIntents(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "list_failed")
+		return
+	}
+	out := make([]intentResponse, 0, len(items))
+	for _, item := range items {
+		out = append(out, toIntentResponse(item))
+	}
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (h IntentHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +124,29 @@ func (h IntentHandlers) GetPlan(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toPlanResponse(plan))
 }
 
+func (h IntentHandlers) RejectPlan(w http.ResponseWriter, r *http.Request) {
+	userID, ok := UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthorized")
+		return
+	}
+	planID := r.PathValue("id")
+	if planID == "" {
+		writeError(w, http.StatusBadRequest, "invalid_plan_id")
+		return
+	}
+	plan, err := h.Service.RejectPlan(r.Context(), userID, planID)
+	if errors.Is(err, store.ErrNotFound) {
+		writeError(w, http.StatusNotFound, "not_found")
+		return
+	}
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "reject_failed")
+		return
+	}
+	writeJSON(w, http.StatusOK, toPlanResponse(plan))
+}
+
 func toIntentResponse(res intentsvc.Result) intentResponse {
 	return intentResponse{
 		ID:     res.Intent.ID,
@@ -115,6 +165,8 @@ func toPlanResponse(p store.Plan) planResponse {
 			DecodedSummary: st.DecodedSummary,
 			Status:         st.Status,
 			Payload:        st.PayloadJSON,
+			TxHash:         st.TxHash,
+			Error:          st.Error,
 		})
 	}
 	reasons := p.RejectionReasons
