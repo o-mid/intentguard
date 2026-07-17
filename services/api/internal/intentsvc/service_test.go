@@ -44,6 +44,19 @@ func (m *memIntents) UpdateStatus(_ context.Context, id, status string) error {
 	return nil
 }
 
+func (m *memIntents) ListByUser(_ context.Context, userID string) ([]store.IntentPlanRef, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []store.IntentPlanRef
+	for _, in := range m.byID {
+		if in.UserID != userID {
+			continue
+		}
+		out = append(out, store.IntentPlanRef{Intent: in, PlanID: ""})
+	}
+	return out, nil
+}
+
 type memPlans struct {
 	mu   sync.Mutex
 	byID map[string]store.Plan
@@ -75,6 +88,21 @@ func (m *memPlans) ByIDForUser(_ context.Context, planID, _ string) (store.Plan,
 	if !ok {
 		return store.Plan{}, store.ErrNotFound
 	}
+	return p, nil
+}
+
+func (m *memPlans) CancelForUser(_ context.Context, planID, _ string) (store.Plan, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	p, ok := m.byID[planID]
+	if !ok {
+		return store.Plan{}, store.ErrNotFound
+	}
+	if p.Status != StatusAwaitingApproval && p.Status != "executing" {
+		return store.Plan{}, store.ErrNotFound
+	}
+	p.Status = "cancelled"
+	m.byID[planID] = p
 	return p, nil
 }
 

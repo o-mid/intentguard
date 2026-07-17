@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../auth/presentation/cubit/auth_cubit.dart';
 
@@ -19,18 +20,30 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(email, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'Balances soon',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ],
-        ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Text(email, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 16),
+          ListTile(
+            title: const Text('New intent'),
+            subtitle: const Text('Compose and plan'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/compose'),
+          ),
+          ListTile(
+            title: const Text('History'),
+            subtitle: const Text('Past intents and plans'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/history'),
+          ),
+          ListTile(
+            title: const Text('Balances'),
+            subtitle: const Text('Demo token balances'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/balances'),
+          ),
+        ],
       ),
     );
   }
