@@ -12,6 +12,7 @@ import (
 
 var ErrEmailTaken = errors.New("email taken")
 var ErrNotFound = errors.New("not found")
+var ErrConflict = errors.New("conflict")
 
 type User struct {
 	ID           string

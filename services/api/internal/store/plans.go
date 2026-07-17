@@ -124,3 +124,71 @@ func (s *Plans) ByIDForUser(ctx context.Context, planID, userID string) (Plan, e
 	}
 	return out, rows.Err()
 }
+
+func (s *Plans) UpdateStepStatus(ctx context.Context, planID string, index int, status string) error {
+	const q = `
+		UPDATE plan_steps
+		SET status = $3
+		WHERE plan_id = $1 AND step_index = $2
+	`
+	tag, err := s.pool.Exec(ctx, q, planID, index, status)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	_, _ = s.pool.Exec(ctx, `UPDATE plans SET status = 'executing' WHERE id = $1 AND status = 'awaiting_approval'`, planID)
+	return nil
+}
+
+// ClaimStep moves pending/approved/failed → submitting. Succeeded steps are left alone (caller short-circuits).
+func (s *Plans) ClaimStep(ctx context.Context, planID string, index int) (PlanStep, error) {
+	const q = `
+		UPDATE plan_steps
+		SET status = 'submitting'
+		WHERE plan_id = $1 AND step_index = $2
+		  AND status IN ('pending', 'approved', 'failed')
+		RETURNING id::text, plan_id::text, step_index, action, payload_json, decoded_summary, status, tx_hash, error
+	`
+	var st PlanStep
+	err := s.pool.QueryRow(ctx, q, planID, index).
+		Scan(&st.ID, &st.PlanID, &st.Index, &st.Action, &st.PayloadJSON, &st.DecodedSummary, &st.Status, &st.TxHash, &st.Error)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PlanStep{}, ErrConflict
+	}
+	if err != nil {
+		return PlanStep{}, err
+	}
+	_, _ = s.pool.Exec(ctx, `UPDATE plans SET status = 'executing' WHERE id = $1 AND status = 'awaiting_approval'`, planID)
+	return st, nil
+}
+
+func (s *Plans) FinishStep(ctx context.Context, planID string, index int, status string, txHash, errMsg *string) (PlanStep, error) {
+	const q = `
+		UPDATE plan_steps
+		SET status = $3, tx_hash = $4, error = $5
+		WHERE plan_id = $1 AND step_index = $2
+		RETURNING id::text, plan_id::text, step_index, action, payload_json, decoded_summary, status, tx_hash, error
+	`
+	var st PlanStep
+	err := s.pool.QueryRow(ctx, q, planID, index, status, txHash, errMsg).
+		Scan(&st.ID, &st.PlanID, &st.Index, &st.Action, &st.PayloadJSON, &st.DecodedSummary, &st.Status, &st.TxHash, &st.Error)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return PlanStep{}, ErrNotFound
+	}
+	if err != nil {
+		return PlanStep{}, err
+	}
+
+	// If all steps succeeded, mark plan completed.
+	const doneQ = `
+		UPDATE plans SET status = 'completed'
+		WHERE id = $1
+		  AND NOT EXISTS (
+		    SELECT 1 FROM plan_steps WHERE plan_id = $1 AND status <> 'succeeded'
+		  )
+	`
+	_, _ = s.pool.Exec(ctx, doneQ, planID)
+	return st, nil
+}
