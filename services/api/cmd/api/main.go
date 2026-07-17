@@ -79,10 +79,21 @@ func main() {
 		Users:  store.NewUsers(pool),
 		Tokens: tokens,
 	}
+	p, err := planner.NewFromMode(cfg.PlannerMode, planner.LLMOptions{
+		BaseURL: cfg.LLMBaseURL,
+		APIKey:  cfg.LLMAPIKey,
+		Model:   cfg.LLMModel,
+	})
+	if err != nil {
+		log.Error("planner", "err", err)
+		os.Exit(1)
+	}
+	log.Info("planner", "mode", cfg.PlannerMode)
+
 	svc := intentsvc.Service{
 		Intents: store.NewIntents(pool),
 		Plans:   plans,
-		Planner: planner.NewMock(),
+		Planner: p,
 		Policy:  policy.DefaultConfig(),
 	}
 	intentHandlers := httpapi.IntentHandlers{Service: svc}

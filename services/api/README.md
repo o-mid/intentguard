@@ -15,8 +15,19 @@ Go HTTP service for IntentGuard: auth, intents → plans, per-step approve again
 | `CHAIN_RPC_URL` | no | `http://127.0.0.1:8545` |
 | `EXECUTOR_PRIVATE_KEY` | no | Anvil account #0 (local demo only) |
 | `DEPLOYMENTS_PATH` | no | `../../contracts/deployments/anvil.json` |
+| `PLANNER_MODE` | no | `mock` |
+| `LLM_API_KEY` | if `PLANNER_MODE=llm` | — |
+| `LLM_BASE_URL` | no | `https://api.openai.com/v1` |
+| `LLM_MODEL` | no | `gpt-4o-mini` |
 
 `EXECUTOR_PRIVATE_KEY` default is Anvil’s first unlocked key — never use on a real network.
+
+### Planner modes
+
+- `PLANNER_MODE=mock` (default, compose/CI): deterministic keyword fixtures, no network, no API key.
+- `PLANNER_MODE=llm`: OpenAI-compatible chat completions. Set `LLM_API_KEY`. Optional `LLM_BASE_URL` / `LLM_MODEL` for other providers.
+
+LLM output is still JSON-schema validated and policy-checked before any step can be approved. Timeouts and one retry surface as HTTP `503` / `planner_unavailable`. Model hex is never executed.
 
 ## Compose (API + Postgres + Anvil)
 
@@ -57,8 +68,18 @@ curl -s localhost:8080/health
 
 ## Intents (mock planner)
 
+With `PLANNER_MODE=mock`:
+
 - `swap 10 USDC` → approve + swap (`awaiting_approval`)
 - `transfer 5 USDC` → allowlisted transfer
 - `bridge funds somewhere` → `rejected_schema`
 - `transfer to unknown wallet` → `rejected_policy`
 - `swap 150 USDC` → `rejected_policy` (amount cap)
+
+```bash
+# optional: live planner against an OpenAI-compatible API
+export PLANNER_MODE=llm
+export LLM_API_KEY=sk-...
+# export LLM_BASE_URL=https://api.openai.com/v1
+# export LLM_MODEL=gpt-4o-mini
+```
