@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS audit_events;
+DROP TABLE IF EXISTS plan_steps;
+DROP TABLE IF EXISTS plans;
+DROP TABLE IF EXISTS intents;
