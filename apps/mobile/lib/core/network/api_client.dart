@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../features/auth/data/auth_api.dart';
+import '../../features/intents/data/intents_api.dart';
 import '../constants.dart';
 import '../storage/token_storage.dart';
 import 'auth_interceptor.dart';
@@ -23,6 +24,7 @@ class ApiClient {
       ),
     );
     authApi = AuthApi(dio);
+    intentsApi = IntentsApi(dio);
     dio.interceptors.add(
       AuthInterceptor(
         storage: storage,
@@ -33,4 +35,5 @@ class ApiClient {
 
   late final Dio dio;
   late final AuthApi authApi;
+  late final IntentsApi intentsApi;
 }

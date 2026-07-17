@@ -22,11 +22,13 @@ const (
 type intentStore interface {
 	Create(ctx context.Context, userID, text, status string) (store.Intent, error)
 	UpdateStatus(ctx context.Context, id, status string) error
+	ListByUser(ctx context.Context, userID string) ([]store.IntentPlanRef, error)
 }
 
 type planStore interface {
 	Create(ctx context.Context, p store.Plan, steps []store.PlanStep) (store.Plan, error)
 	ByIDForUser(ctx context.Context, planID, userID string) (store.Plan, error)
+	CancelForUser(ctx context.Context, planID, userID string) (store.Plan, error)
 }
 
 type Service struct {
@@ -113,6 +115,26 @@ func (s Service) Submit(ctx context.Context, userID, text string) (Result, error
 
 func (s Service) GetPlan(ctx context.Context, userID, planID string) (store.Plan, error) {
 	return s.Plans.ByIDForUser(ctx, planID, userID)
+}
+
+func (s Service) RejectPlan(ctx context.Context, userID, planID string) (store.Plan, error) {
+	return s.Plans.CancelForUser(ctx, planID, userID)
+}
+
+func (s Service) ListIntents(ctx context.Context, userID string) ([]Result, error) {
+	refs, err := s.Intents.ListByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]Result, 0, len(refs))
+	for _, ref := range refs {
+		plan, err := s.Plans.ByIDForUser(ctx, ref.PlanID, userID)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, Result{Intent: ref.Intent, Plan: plan})
+	}
+	return out, nil
 }
 
 func (s Service) persistRejected(ctx context.Context, intentID string, planned planschema.Plan, raw []byte, status string, reasons []string) (store.Plan, error) {
