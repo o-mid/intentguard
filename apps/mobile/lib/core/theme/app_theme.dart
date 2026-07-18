@@ -78,12 +78,22 @@ class AppTheme {
         ),
       ),
       chipTheme: ChipThemeData(
-        backgroundColor: _sand,
-        selectedColor: _moss.withValues(alpha: 0.18),
-        labelStyle: GoogleFonts.dmSans(fontSize: 13, fontWeight: FontWeight.w500),
+        backgroundColor: Colors.white,
+        selectedColor: _moss.withValues(alpha: 0.16),
+        disabledColor: _sand,
+        labelStyle: GoogleFonts.dmSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: _ink,
+        ),
+        secondaryLabelStyle: GoogleFonts.dmSans(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: _forest,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        side: BorderSide.none,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        side: const BorderSide(color: Color(0xFFB7C9BF)),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       ),
       dividerTheme: const DividerThemeData(color: Color(0xFFD8E3DD)),
     );

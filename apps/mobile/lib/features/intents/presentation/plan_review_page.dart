@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../data/plan_models.dart';
 import 'cubit/plan_review_cubit.dart';
 import 'cubit/plan_review_state.dart';
+import 'status_labels.dart';
 import 'widgets/step_status_chip.dart';
 
 class PlanReviewPage extends StatelessWidget {
@@ -35,6 +37,7 @@ class PlanReviewPage extends StatelessWidget {
             }
             final plan = state.plan!;
             final busy = state.busyStepIndex != null;
+            final rejected = plan.isRejected;
             return Column(
               children: [
                 Expanded(
@@ -49,19 +52,12 @@ class PlanReviewPage extends StatelessWidget {
                           height: 1.15,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          StepStatusChip(status: plan.status),
-                          if (plan.rejectionReasons.isNotEmpty)
-                            StepStatusChip(
-                              status: plan.rejectionReasons.join(', '),
-                              tone: StepChipTone.danger,
-                            ),
-                        ],
-                      ),
+                      const SizedBox(height: 14),
+                      _MetaSection(plan: plan),
+                      if (plan.rejectionReasons.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _RejectionSection(reasons: plan.rejectionReasons),
+                      ],
                       if (state.message != null) ...[
                         const SizedBox(height: 12),
                         Text(
@@ -71,15 +67,25 @@ class PlanReviewPage extends StatelessWidget {
                       ],
                       const SizedBox(height: 22),
                       Text(
-                        'Steps',
+                        rejected ? 'Planned steps (blocked)' : 'Execution steps',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w700,
                             ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 4),
+                      Text(
+                        rejected
+                            ? 'Policy/schema blocked this plan. Steps below show what the planner produced.'
+                            : 'Approve each step in order. A tx hash is returned from the local Anvil executor.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurface.withValues(alpha: 0.6),
+                              height: 1.35,
+                            ),
+                      ),
+                      const SizedBox(height: 12),
                       if (plan.steps.isEmpty)
                         Text(
-                          'No executable steps. Rejected plans stay here for review.',
+                          'No steps were produced for this plan.',
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                                 color: scheme.onSurface.withValues(alpha: 0.65),
                               ),
@@ -90,9 +96,7 @@ class PlanReviewPage extends StatelessWidget {
                             step: step,
                             busy: state.busyStepIndex == step.index,
                             canApprove: !busy &&
-                                plan.status != 'cancelled' &&
-                                plan.status != 'rejected_schema' &&
-                                plan.status != 'rejected_policy' &&
+                                !rejected &&
                                 step.status == 'pending' &&
                                 _priorSucceeded(plan, step.index),
                             onApprove: () => context
@@ -136,6 +140,156 @@ bool _priorSucceeded(PlanModel plan, int index) {
   return true;
 }
 
+class _MetaSection extends StatelessWidget {
+  const _MetaSection({required this.plan});
+
+  final PlanModel plan;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFD5E0DA)),
+      ),
+      child: Column(
+        children: [
+          _MetaRow(label: 'Plan status', trailing: StepStatusChip(status: plan.status)),
+          const Divider(height: 20),
+          _MetaRow(
+            label: 'Schema',
+            value: plan.schemaVersion.isEmpty ? '—' : plan.schemaVersion,
+          ),
+          const SizedBox(height: 10),
+          _MetaRow(
+            label: 'Steps',
+            value: '${plan.steps.length}',
+          ),
+          const SizedBox(height: 10),
+          _MetaRow(
+            label: 'Plan ID',
+            value: shortHash(plan.id),
+            mono: true,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetaRow extends StatelessWidget {
+  const _MetaRow({
+    required this.label,
+    this.value,
+    this.trailing,
+    this.mono = false,
+  });
+
+  final String label;
+  final String? value;
+  final Widget? trailing;
+  final bool mono;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
+                ),
+          ),
+        ),
+        if (trailing != null)
+          trailing!
+        else
+          Text(
+            value ?? '',
+            style: (mono
+                    ? GoogleFonts.robotoMono(fontSize: 13)
+                    : Theme.of(context).textTheme.bodyMedium)
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
+      ],
+    );
+  }
+}
+
+class _RejectionSection extends StatelessWidget {
+  const _RejectionSection({required this.reasons});
+
+  final List<RejectionReason> reasons;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF5F5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.gpp_bad_outlined, color: Color(0xFF912018), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Backend rejection details',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF912018),
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...reasons.map(
+            (reason) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    formatRejectionTitle(reason),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF912018),
+                        ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    reason.message.isEmpty
+                        ? 'code: ${reason.code}'
+                        : '${reason.code} · ${reason.message}',
+                    style: GoogleFonts.robotoMono(
+                      fontSize: 12,
+                      height: 1.35,
+                      color: const Color(0xFF912018).withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _StepCard extends StatelessWidget {
   const _StepCard({
     required this.step,
@@ -152,6 +306,9 @@ class _StepCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final details = step.payload.detailRows;
+    final hasHash = step.txHash != null && step.txHash!.isNotEmpty;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
@@ -165,43 +322,96 @@ class _StepCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    'Step ${step.index + 1}',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Step ${step.index + 1}',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        step.action.toUpperCase(),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              letterSpacing: 0.6,
+                              fontWeight: FontWeight.w700,
+                              color: scheme.onSurface.withValues(alpha: 0.5),
+                            ),
+                      ),
+                    ],
                   ),
                 ),
-                Flexible(child: StepStatusChip(status: step.status)),
+                StepStatusChip(status: step.status),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Text(
               step.decodedSummary.isEmpty ? step.action : step.decodedSummary,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.35),
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    height: 1.35,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
-            if (step.txHash != null && step.txHash!.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                step.txHash!,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: scheme.onSurface.withValues(alpha: 0.55),
-                    ),
+            if (details.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F6F4),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    for (var i = 0; i < details.length; i++) ...[
+                      if (i > 0) const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 88,
+                            child: Text(
+                              details[i].$1,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: scheme.onSurface.withValues(alpha: 0.55),
+                                  ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              details[i].$2,
+                              style: GoogleFonts.robotoMono(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w500,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ],
+            if (hasHash) ...[
+              const SizedBox(height: 12),
+              _TxHashBlock(hash: step.txHash!),
+            ],
             if (step.error != null && step.error!.isNotEmpty) ...[
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
               Text(
                 step.error!,
                 style: TextStyle(color: scheme.error, height: 1.3),
               ),
             ],
             if (canApprove || busy) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               Align(
                 alignment: Alignment.centerRight,
                 child: FilledButton(
@@ -215,6 +425,69 @@ class _StepCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _TxHashBlock extends StatelessWidget {
+  const _TxHashBlock({required this.hash});
+
+  final String hash;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E1A16),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'TX HASH',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: const Color(0xFF95D5B2),
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8,
+                    ),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: hash));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Tx hash copied')),
+                    );
+                  }
+                },
+                child: Text(
+                  'Copy',
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SelectableText(
+            hash,
+            style: GoogleFonts.robotoMono(
+              fontSize: 12.5,
+              height: 1.4,
+              color: Colors.white,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

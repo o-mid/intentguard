@@ -16,11 +16,21 @@ class ComposerCubit extends Cubit<ComposerState> {
   ];
 
   void setText(String value) {
-    emit(state.copyWith(text: value, clearMessage: true));
+    emit(state.copyWith(
+      status: ComposerStatus.initial,
+      text: value,
+      clearResult: true,
+      clearMessage: true,
+    ));
   }
 
   void useChip(String chip) {
-    emit(state.copyWith(text: chip, clearMessage: true));
+    emit(state.copyWith(
+      status: ComposerStatus.initial,
+      text: chip,
+      clearResult: true,
+      clearMessage: true,
+    ));
   }
 
   Future<void> submit() async {

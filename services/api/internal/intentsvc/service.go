@@ -61,7 +61,10 @@ func (s Service) Submit(ctx context.Context, userID, text string) (Result, error
 	}
 
 	if err := planschema.ValidateJSON(raw); err != nil {
-		plan, perr := s.persistRejected(ctx, intent.ID, planned, raw, StatusRejectedSchema, []string{"schema_invalid"})
+		plan, perr := s.persistRejected(ctx, intent.ID, planned, raw, StatusRejectedSchema, []policy.Violation{{
+			Code:    policy.Code("schema_invalid"),
+			Message: err.Error(),
+		}})
 		if perr != nil {
 			return Result{}, perr
 		}
@@ -72,8 +75,7 @@ func (s Service) Submit(ctx context.Context, userID, text string) (Result, error
 
 	violations := policy.Check(planned, s.Policy)
 	if len(violations) > 0 {
-		reasons := rejectionCodes(violations)
-		plan, perr := s.persistRejected(ctx, intent.ID, planned, raw, StatusRejectedPolicy, reasons)
+		plan, perr := s.persistRejected(ctx, intent.ID, planned, raw, StatusRejectedPolicy, violations)
 		if perr != nil {
 			return Result{}, perr
 		}
@@ -137,8 +139,8 @@ func (s Service) ListIntents(ctx context.Context, userID string) ([]Result, erro
 	return out, nil
 }
 
-func (s Service) persistRejected(ctx context.Context, intentID string, planned planschema.Plan, raw []byte, status string, reasons []string) (store.Plan, error) {
-	reasonsJSON, err := json.Marshal(reasons)
+func (s Service) persistRejected(ctx context.Context, intentID string, planned planschema.Plan, raw []byte, status string, reasons []policy.Violation) (store.Plan, error) {
+	reasonsJSON, err := json.Marshal(dedupeViolations(reasons))
 	if err != nil {
 		return store.Plan{}, err
 	}
@@ -166,16 +168,16 @@ func (s Service) persistRejected(ctx context.Context, intentID string, planned p
 	}, steps)
 }
 
-func rejectionCodes(vs []policy.Violation) []string {
-	out := make([]string, 0, len(vs))
+func dedupeViolations(vs []policy.Violation) []policy.Violation {
+	out := make([]policy.Violation, 0, len(vs))
 	seen := map[string]struct{}{}
 	for _, v := range vs {
-		code := string(v.Code)
-		if _, ok := seen[code]; ok {
+		key := string(v.Code) + "|" + v.Message
+		if _, ok := seen[key]; ok {
 			continue
 		}
-		seen[code] = struct{}{}
-		out = append(out, code)
+		seen[key] = struct{}{}
+		out = append(out, v)
 	}
 	return out
 }
