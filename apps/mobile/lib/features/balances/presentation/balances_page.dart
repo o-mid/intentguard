@@ -7,7 +7,7 @@ class BalancesPage extends StatelessWidget {
 
   static const _rows = [
     ('MOCK_USDC', '1,000.00'),
-    ('MOCK_WETH', '5.0000'),
+    ('MOCK_ETH', '5.0000'),
   ];
 
   @override
@@ -27,7 +27,7 @@ class BalancesPage extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Sample Anvil balances for local demos. Live chain reads come later.',
+            'Seeded Anvil demo balances used by the mock planner (MOCK_USDC / MOCK_ETH).',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: scheme.onSurface.withValues(alpha: 0.65),
                   height: 1.35,

@@ -154,13 +154,16 @@ func TestSubmit_rejects(t *testing.T) {
 			if res.Plan.Status != tt.status {
 				t.Fatalf("status=%s want %s", res.Plan.Status, tt.status)
 			}
-			var reasons []string
+			var reasons []struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			}
 			if err := json.Unmarshal(res.Plan.RejectionReasons, &reasons); err != nil {
 				t.Fatal(err)
 			}
 			found := false
 			for _, r := range reasons {
-				if r == tt.code {
+				if r.Code == tt.code {
 					found = true
 					break
 				}
