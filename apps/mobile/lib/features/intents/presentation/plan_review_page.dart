@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../data/plan_models.dart';
 import 'cubit/plan_review_cubit.dart';
@@ -11,6 +12,7 @@ class PlanReviewPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Plan review')),
       body: SafeArea(
@@ -26,6 +28,7 @@ class PlanReviewPage extends StatelessWidget {
                   padding: const EdgeInsets.all(24),
                   child: Text(
                     state.message ?? 'This plan is unavailable.',
+                    textAlign: TextAlign.center,
                   ),
                 ),
               );
@@ -36,45 +39,50 @@ class PlanReviewPage extends StatelessWidget {
               children: [
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
                     children: [
                       Text(
-                        plan.summary.isEmpty
-                            ? 'Untitled plan'
-                            : plan.summary,
-                        style: Theme.of(context).textTheme.titleMedium,
+                        plan.summary.isEmpty ? 'Untitled plan' : plan.summary,
+                        style: GoogleFonts.fraunces(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w600,
+                          height: 1.15,
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
+                        runSpacing: 8,
                         children: [
-                          Chip(label: Text(plan.status)),
+                          StepStatusChip(status: plan.status),
                           if (plan.rejectionReasons.isNotEmpty)
-                            Chip(
-                              label: Text(plan.rejectionReasons.join(', ')),
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.errorContainer,
+                            StepStatusChip(
+                              status: plan.rejectionReasons.join(', '),
+                              tone: StepChipTone.danger,
                             ),
                         ],
                       ),
                       if (state.message != null) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                         Text(
                           state.message!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
+                          style: TextStyle(color: scheme.error, height: 1.35),
                         ),
                       ],
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 22),
                       Text(
                         'Steps',
-                        style: Theme.of(context).textTheme.titleSmall,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       if (plan.steps.isEmpty)
-                        const Text(
+                        Text(
                           'No executable steps. Rejected plans stay here for review.',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: scheme.onSurface.withValues(alpha: 0.65),
+                              ),
                         )
                       else
                         ...plan.steps.map(
@@ -97,7 +105,7 @@ class PlanReviewPage extends StatelessWidget {
                 ),
                 if (state.canReject)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
                     child: OutlinedButton(
                       onPressed: busy
                           ? null
@@ -143,58 +151,69 @@ class _StepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFD5E0DA)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
                     'Step ${step.index + 1}',
-                    style: Theme.of(context).textTheme.labelLarge,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
-                  const Spacer(),
-                  StepStatusChip(status: step.status),
-                ],
-              ),
+                ),
+                Flexible(child: StepStatusChip(status: step.status)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              step.decodedSummary.isEmpty ? step.action : step.decodedSummary,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.35),
+            ),
+            if (step.txHash != null && step.txHash!.isNotEmpty) ...[
               const SizedBox(height: 6),
               Text(
-                step.decodedSummary.isEmpty ? step.action : step.decodedSummary,
+                step.txHash!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurface.withValues(alpha: 0.55),
+                    ),
               ),
-              if (step.txHash != null && step.txHash!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  step.txHash!,
-                  style: Theme.of(context).textTheme.bodySmall,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              if (step.error != null && step.error!.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  step.error!,
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ],
-              if (canApprove || busy) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: FilledButton(
-                    onPressed: busy ? null : onApprove,
-                    child: Text(busy ? 'Submitting…' : 'Approve'),
-                  ),
-                ),
-              ],
             ],
-          ),
+            if (step.error != null && step.error!.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                step.error!,
+                style: TextStyle(color: scheme.error, height: 1.3),
+              ),
+            ],
+            if (canApprove || busy) ...[
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(140, 44),
+                  ),
+                  onPressed: busy ? null : onApprove,
+                  child: Text(busy ? 'Submitting…' : 'Approve'),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
