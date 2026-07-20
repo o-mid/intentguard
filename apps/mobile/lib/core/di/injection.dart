@@ -10,13 +10,21 @@ import '../storage/token_storage.dart';
 
 final getIt = GetIt.instance;
 
-Future<void> configureDependencies({TokenStorage? storage}) async {
+Future<void> configureDependencies({
+  TokenStorage? storage,
+  String? apiBase,
+}) async {
+  if (getIt.isRegistered<AuthCubit>()) {
+    return;
+  }
+
   final tokenStorage = storage ?? SecureTokenStorage();
   getIt.registerSingleton<TokenStorage>(tokenStorage);
 
   late final AuthCubit authCubit;
   final api = ApiClient(
     storage: tokenStorage,
+    baseUrl: apiBase,
     onSessionExpired: () => authCubit.sessionExpired(),
   );
   getIt.registerSingleton<ApiClient>(api);
